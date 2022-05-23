@@ -281,6 +281,10 @@ void verify_and_pretty_print(benchmark_result_t br_serial, benchmark_result_t br
     printf("Parallel dfs took %lf seconds on average\n", t_total_parallel / nruns);
 }
 
+//
+// XXX: termination protocol for work-stealing is broken, so
+// the benchmark numbers are not reliable yet
+//
 int main(int argc, char **argv)
 {
     if (argc > 2) {

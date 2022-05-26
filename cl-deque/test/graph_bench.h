@@ -9,8 +9,8 @@ const size_t KEY_RANGE = 100;
 
 const size_t MAX_NUM_NODES = 500000;
 
-const size_t MIN_TIMEOUT_NS = 1e1;
-const size_t MAX_TIMEOUT_NS = 1e3;
+const size_t MIN_TIMEOUT_NS = 1e2;
+const size_t MAX_TIMEOUT_NS = 1e4;
 
 // =======
 // Tree node
@@ -29,37 +29,6 @@ tree_node_t *create_tree_node(size_t key)
     head->left = NULL;
     head->right = NULL;
     return head;
-}
-
-//
-// destroys head and all children in depth-first order
-//
-void destroy_tree_node(tree_node_t *head)
-{
-    array_stack_t stack = create_stack(MAX_NUM_NODES);
-
-    push(&stack, head);
-
-    for (;;) {
-        // Empty dfs queue
-        if (stack.top == stack.bottom) {
-            break;
-        }
-
-        tree_node_t *n = (tree_node_t *)pop(&stack);
-
-        if (n) {
-            free(n);
-            if (n->left) {
-                push(&stack, n->left);
-            }
-            if (n->right) {
-                push(&stack, n->right);
-            }
-        }
-    }
-
-    destroy_stack(&stack);
 }
 
 // =======

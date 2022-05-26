@@ -222,7 +222,7 @@ benchmark_result_t run_parallel_dfs_benchmark(tree_node_t *head, size_t nruns,
                                               size_t nworkers)
 {
     assert(nruns > 0);
-    assert(nworkers > 1);
+    assert(nworkers > 0);
 
     double *times = malloc(nruns * sizeof(double));
     size_t *results = malloc(nruns * sizeof(size_t));
@@ -292,14 +292,15 @@ int main(int argc, char **argv)
     // TODO: get this from CLI
     size_t nnodes = MAX_NUM_NODES;
     size_t nruns = 500;
-    size_t nworkers = 4;
+    size_t max_nworkers = 4;
 
     tree_node_t *head = generate_random_tree(nnodes);
 
-    benchmark_result_t br_serial = run_serial_dfs_benchmark(head, nruns);
-    benchmark_result_t br_parallel = run_parallel_dfs_benchmark(head, nruns, nworkers);
-
-    verify_and_pretty_print(br_serial, br_parallel, nruns);
+    for (size_t nworkers = 1; nworkers <= max_nworkers; ++nworkers) {
+        benchmark_result_t br_serial = run_serial_dfs_benchmark(head, nruns);
+        benchmark_result_t br_parallel = run_parallel_dfs_benchmark(head, nruns, nworkers);
+        verify_and_pretty_print(br_serial, br_parallel, nruns);
+    }
 
     return 0;
 }

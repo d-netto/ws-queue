@@ -153,18 +153,18 @@ void *dfs_work(void *arg)
             atomic_store_explicit(&me->waiting, false, memory_order_release);
         }
 
-work : {
-    tree_node_t *n = (tree_node_t *)cl_deque_pop(dq);
-    if (n) {
-        *sum += compute_hash(n->key);
-        if (n->left) {
-            cl_deque_push(dq, n->left);
+        work : {
+            tree_node_t *n = (tree_node_t *)cl_deque_pop(dq);
+            if (n) {
+                *sum += compute_hash(n->key);
+                if (n->left) {
+                    cl_deque_push(dq, n->left);
+                }
+                if (n->right) {
+                    cl_deque_push(dq, n->right);
+                }
+            }
         }
-        if (n->right) {
-            cl_deque_push(dq, n->right);
-        }
-    }
-}
     }
 }
 
@@ -291,7 +291,7 @@ int main(int argc, char **argv)
 
     // TODO: get this from CLI
     size_t nnodes = MAX_NUM_NODES;
-    size_t nruns = 100;
+    size_t nruns = 500;
     size_t nworkers = 4;
 
     tree_node_t *head = generate_random_tree(nnodes);

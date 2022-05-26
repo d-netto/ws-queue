@@ -65,7 +65,6 @@ size_t serial_dfs(tree_node_t *head)
         }
 
         tree_node_t *n = (tree_node_t *)pop(&stack);
-
         if (n) {
             sum += compute_hash(n->key);
             if (n->left) {

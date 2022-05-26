@@ -4,7 +4,9 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
-static size_t MAX_BUFFER_SIZE = 100000;
+#include "array.h"
+
+static size_t BUFFER_INIT_SIZE = 1 << 3;
 
 // =======
 // Chase and Lev's work-stealing queue, optimized for
@@ -18,7 +20,7 @@ static size_t MAX_BUFFER_SIZE = 100000;
 typedef struct {
     _Atomic(int64_t) top;
     _Atomic(int64_t) bottom;
-    void **buffer;
+    _Atomic(array_t *) array;
 } cl_deque_t;
 
 cl_deque_t *create_cl_deque();
@@ -26,6 +28,8 @@ cl_deque_t *create_cl_deque();
 void destroy_cl_deque(cl_deque_t *dq);
 
 void cl_deque_push(cl_deque_t *dq, void *elt);
+
+array_t *cl_resize(cl_deque_t *dq);
 
 void *cl_deque_pop(cl_deque_t *dq);
 

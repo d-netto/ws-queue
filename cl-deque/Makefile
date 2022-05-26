@@ -3,7 +3,7 @@ CC=gcc
 CC_FLAGS=-std=c11 -Wall -Wno-attributes -O2
 BINDIR=bin
 
-CL_DEQUE_SRCS=src/array_stack.c src/cl_deque.c
+CL_DEQUE_SRCS=src/array.c src/array_stack.c src/cl_deque.c
 CL_DEQUE_OBJS=$(CL_DEQUE_SRCS:%.c=$(BINDIR)/%.o)
 
 TEST_SRCS=test/graph_bench.c

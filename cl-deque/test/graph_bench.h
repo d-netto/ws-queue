@@ -7,10 +7,10 @@
 
 const size_t KEY_RANGE = 100;
 
-const size_t MAX_NUM_NODES = 100000;
+const size_t MAX_NUM_NODES = 500000;
 
-const size_t MIN_TIMEOUT_US = 1;
-const size_t MAX_TIMEOUT_US = 100;
+const size_t MIN_TIMEOUT_NS = 1e2;
+const size_t MAX_TIMEOUT_NS = 1e6;
 
 // =======
 // Tree node

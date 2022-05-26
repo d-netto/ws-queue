@@ -120,8 +120,9 @@ void *dfs_work(void *arg)
     cl_deque_t *dq = me->dq;
 
     size_t *sum = calloc(1, sizeof(size_t));
+
     // used for exponential backoff in sleep timeout
-    size_t timeout_us = MIN_TIMEOUT_US;
+    size_t timeout_ns = MIN_TIMEOUT_NS;
 
     for (;;) {
         int64_t t = atomic_load_explicit(&dq->top, memory_order_acquire);
@@ -129,8 +130,6 @@ void *dfs_work(void *arg)
 
         // Empty dfs queue: try stealing from a peer
         if (t >= b) {
-            size_t timeout_us2 = 0;
-
             if (all_workers_done(me)) {
                 atomic_store_explicit(&me->waiting, true, memory_order_release);
                 destroy_cl_deque(dq);
@@ -139,34 +138,32 @@ void *dfs_work(void *arg)
 
             for (int i = 0; i < 2 * me->peers.nworkers; ++i) {
                 worker_t *peer = get_random_peer(me->peers, me->id);
-                void *n = cl_deque_steal_from(peer->dq);
+                tree_node_t *n = (tree_node_t *)cl_deque_steal_from(peer->dq);
                 if (n) { // successful steal
                     cl_deque_push(dq, n);
-                    timeout_us2 = timeout_us = MAX(timeout_us - 1, MIN_TIMEOUT_US);
-                    break;
+                    timeout_ns = MAX(timeout_ns - 1, MIN_TIMEOUT_NS);
+                    goto work;
                 }
             }
 
-            // steal failed: backoff and sleep
-            if (timeout_us2 == 0) {
-                atomic_store_explicit(&me->waiting, true, memory_order_release);
-                timeout_us = MIN(timeout_us * 2, MAX_TIMEOUT_US);
-                sleep(1e-6 * timeout_us);
-                atomic_store_explicit(&me->waiting, false, memory_order_release);
-            }
+            atomic_store_explicit(&me->waiting, true, memory_order_release);
+            timeout_ns = MIN(timeout_ns * 2, MAX_TIMEOUT_NS);
+            sleep(10e-9 * timeout_ns);
+            atomic_store_explicit(&me->waiting, false, memory_order_release);
         }
 
-        tree_node_t *n = (tree_node_t *)cl_deque_pop(dq);
-
-        if (n) {
-            *sum += n->key;
-            if (n->left) {
-                cl_deque_push(dq, n->left);
-            }
-            if (n->right) {
-                cl_deque_push(dq, n->right);
-            }
+work : {
+    tree_node_t *n = (tree_node_t *)cl_deque_pop(dq);
+    if (n) {
+        *sum += n->key;
+        if (n->left) {
+            cl_deque_push(dq, n->left);
         }
+        if (n->right) {
+            cl_deque_push(dq, n->right);
+        }
+    }
+}
     }
 }
 
@@ -236,6 +233,9 @@ benchmark_result_t run_parallel_dfs_benchmark(tree_node_t *head, size_t nruns,
         worker_t *master = create_master_and_worker_pool(nworkers);
         size_t *sum;
 
+        atomic_store_explicit(&ready, false, memory_order_release);
+        atomic_store_explicit(&all_done, false, memory_order_release);
+
         clock_gettime(CLOCK_MONOTONIC, &start);
         {
             cl_deque_push(master->dq, head);
@@ -281,30 +281,17 @@ void verify_and_pretty_print(benchmark_result_t br_serial, benchmark_result_t br
     printf("Parallel dfs took %lf seconds on average\n", t_total_parallel / nruns);
 }
 
-//
-// XXX: termination protocol for work-stealing is broken, so
-// the benchmark numbers are not reliable yet
-//
 int main(int argc, char **argv)
 {
-    if (argc > 2) {
+    if (argc > 1) {
         fprintf(stderr, "Usage: `graph_bench [num-nodes]");
         return 1;
     }
 
     // TODO: get this from CLI
-    size_t nnodes = MAX_NUM_NODES / 2;
+    size_t nnodes = MAX_NUM_NODES;
     size_t nruns = 100;
     size_t nworkers = 4;
-
-    if (argc == 2) {
-        nnodes = atoi(argv[1]);
-    }
-
-    if (nnodes > MAX_NUM_NODES) {
-        fprintf(stderr, "Number of nodes in `graph_bench` is too large!\n");
-        return 1;
-    }
 
     tree_node_t *head = generate_random_tree(nnodes);
 

@@ -6,7 +6,7 @@
 
 #include "array.h"
 
-static size_t BUFFER_INIT_SIZE = 1 << 3;
+static size_t BUFFER_INIT_SIZE = 1 << 10;
 
 // =======
 // Chase and Lev's work-stealing queue, optimized for

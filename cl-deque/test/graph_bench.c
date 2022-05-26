@@ -7,6 +7,10 @@
 #include "graph_bench.h"
 #include "hash.h"
 
+#include "../src/array_stack.h"
+#include "../src/cl_deque.h"
+// #include "../src/vn_cl_deque.h"
+
 #define MIN(a, b) a < b ? a : b;
 #define MAX(a, b) a > b ? a : b;
 
@@ -117,7 +121,7 @@ void *dfs_work(void *arg)
         ;
 
     worker_t *me = (worker_t *)arg;
-    cl_deque_t *dq = me->dq;
+    cl_deque_t *dq = (cl_deque_t *)me->dq;
 
     size_t *sum = calloc(1, sizeof(size_t));
 
@@ -138,7 +142,7 @@ void *dfs_work(void *arg)
 
             for (int i = 0; i < 2 * me->peers.nworkers; ++i) {
                 worker_t *peer = get_random_peer(me->peers, me->id);
-                tree_node_t *n = (tree_node_t *)cl_deque_steal_from(peer->dq);
+                tree_node_t *n = (tree_node_t *)cl_deque_steal_from((cl_deque_t *)peer->dq);
                 if (n) { // successful steal
                     cl_deque_push(dq, n);
                     timeout_ns = MAX(timeout_ns - 1, MIN_TIMEOUT_NS);
@@ -177,7 +181,7 @@ worker_t *create_master_and_worker_pool(size_t nworkers)
         worker_t *worker = workers + i;
         worker->id = i;
         worker->waiting = false;
-        worker->dq = create_cl_deque();
+        worker->dq = (void *)create_cl_deque();
         worker->peers = pool;
     }
 
@@ -238,7 +242,7 @@ benchmark_result_t run_parallel_dfs_benchmark(tree_node_t *head, size_t nruns,
 
         clock_gettime(CLOCK_MONOTONIC, &start);
         {
-            cl_deque_push(master->dq, head);
+            cl_deque_push((cl_deque_t *)master->dq, head);
             atomic_store_explicit(&ready, true, memory_order_release);
             sum = dfs_work(master);
             worker_pool_t pool = master->peers;

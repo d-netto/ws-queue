@@ -2,9 +2,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "../src/array_stack.h"
-#include "../src/cl_deque.h"
-
 const size_t KEY_RANGE = 100;
 
 const size_t MAX_NUM_NODES = 500000;
@@ -46,7 +43,7 @@ typedef struct _worker_t {
     size_t id;
     _Atomic(bool) waiting;
     pthread_t *thread;
-    cl_deque_t *dq;
+    void *dq;
     worker_pool_t peers;
 } worker_t;
 

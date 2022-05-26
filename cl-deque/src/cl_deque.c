@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include "cl_deque.h"
 
 cl_deque_t *create_cl_deque()
@@ -54,7 +52,7 @@ array_t *cl_resize(cl_deque_t *dq)
 void *cl_deque_pop(cl_deque_t *dq)
 {
     int64_t b = atomic_load_explicit(&dq->bottom, memory_order_relaxed) - 1;
-    array_t *a = atomic_load_explicit(&dq->array, memory_order_acquire);
+    array_t *a = atomic_load_explicit(&dq->array, memory_order_relaxed);
     atomic_store_explicit(&dq->bottom, b, memory_order_relaxed);
     atomic_thread_fence(memory_order_seq_cst);
     int64_t t = atomic_load_explicit(&dq->top, memory_order_relaxed);

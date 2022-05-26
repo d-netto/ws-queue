@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "graph_bench.h"
+#include "hash.h"
 
 #define MIN(a, b) a < b ? a : b;
 #define MAX(a, b) a > b ? a : b;
@@ -66,7 +67,7 @@ size_t serial_dfs(tree_node_t *head)
         tree_node_t *n = (tree_node_t *)pop(&stack);
 
         if (n) {
-            sum += n->key;
+            sum += compute_hash(n->key);
             if (n->left) {
                 push(&stack, n->left);
             }
@@ -155,7 +156,7 @@ void *dfs_work(void *arg)
 work : {
     tree_node_t *n = (tree_node_t *)cl_deque_pop(dq);
     if (n) {
-        *sum += n->key;
+        *sum += compute_hash(n->key);
         if (n->left) {
             cl_deque_push(dq, n->left);
         }

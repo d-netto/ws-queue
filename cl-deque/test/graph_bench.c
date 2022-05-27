@@ -4,8 +4,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "fib.h"
 #include "graph_bench.h"
-#include "hash.h"
 
 #include "../src/array_stack.h"
 #include "../src/cl_deque.h"
@@ -18,7 +18,7 @@ volatile _Atomic(bool) ready = false;
 volatile _Atomic(bool) all_done = false;
 
 // TODO(netto): get this option from CLI
-// #define VN_CL_DEQUE
+#define VN_CL_DEQUE
 
 #ifdef VN_CL_DEQUE
 #define create_deque create_vn_cl_deque
@@ -65,7 +65,7 @@ tree_node_t *generate_random_tree(size_t nnodes)
     srand(time(NULL));
 
     for (size_t i = 0; i < nnodes; ++i) {
-        size_t key = rand();
+        size_t key = rand() % KEY_RANGE;
         tree_node_t *child = create_tree_node(key);
         insert_tree_node(head, child);
     }
@@ -89,7 +89,7 @@ size_t serial_dfs(tree_node_t *head)
 
         tree_node_t *n = (tree_node_t *)pop(&stack);
         if (n) {
-            sum += compute_hash(n->key);
+            sum += compute_fib(n->key);
             if (n->left) {
                 push(&stack, n->left);
             }
@@ -177,7 +177,7 @@ void *dfs_work(void *arg)
         work : {
             tree_node_t *n = (tree_node_t *)deque_pop(dq);
             if (n) {
-                *sum += compute_hash(n->key);
+                *sum += compute_fib(n->key);
                 if (n->left) {
                     deque_push(dq, n->left);
                 }

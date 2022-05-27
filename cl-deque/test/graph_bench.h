@@ -2,12 +2,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-const size_t KEY_RANGE = 100;
+const size_t KEY_RANGE = 20;
 
-const size_t MAX_NUM_NODES = 1000000;
+const size_t MAX_NUM_NODES = 10000;
 
 const size_t MIN_TIMEOUT_NS = 1e1;
-const size_t MAX_TIMEOUT_NS = 1e6;
+const size_t MAX_TIMEOUT_NS = 1e3;
 
 // =======
 // Tree node

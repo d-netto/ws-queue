@@ -10,7 +10,7 @@
 // Chase and Lev's work-stealing queue, optimized for
 // weak memory models by Le et al and with further
 // optimizations to save some cache misses on reading
-// the buffer of elements and capacity (lower bits of
+// the buffer of elements/capacity (lower bits of
 // buffer pointer and capacity contain version number tag)
 //
 // * Chase D., Lev. Y. Dynamic Circular Work-Stealing Deque
@@ -29,7 +29,7 @@ typedef struct {
 
 #define READ_BUF_VN(buffer) ((uintptr_t)buffer & ((uintptr_t)(1 << NUM_TAG_BITS)))
 
-#define READ_BUFFER(buffer) (void **)((uintptr_t)buffer & (~(uintptr_t)(1 << NUM_TAG_BITS)))
+#define READ_BUF(buffer) (void **)((uintptr_t)buffer & (~(uintptr_t)(1 << NUM_TAG_BITS)))
 
 #define TAG_BUFFER(buffer) \
     buffer = (void **)((uintptr_t)buffer | (uintptr_t)(1 << NUM_TAG_BITS))

@@ -29,12 +29,12 @@ void vn_cl_deque_push(vn_cl_deque_t *dq, void *elt)
 {
     int64_t b = atomic_load_explicit(&dq->bottom, memory_order_relaxed);
     int64_t t = atomic_load_explicit(&dq->top, memory_order_acquire);
-    void **buffer = READ_BUFFER(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
+    void **buffer = READ_BUF(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
     size_t capacity =
         READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
     if (b - t > capacity - 1) {
         // Queue is full: resize it
-        buffer = READ_BUFFER(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
+        buffer = READ_BUF(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
         capacity = READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
     }
     atomic_store_explicit((_Atomic(void *) *)&buffer[b % capacity], elt,
@@ -67,7 +67,7 @@ void vn_cl_resize(vn_cl_deque_t *dq)
 void *vn_cl_deque_pop(vn_cl_deque_t *dq)
 {
     int64_t b = atomic_load_explicit(&dq->bottom, memory_order_relaxed) - 1;
-    void **buffer = READ_BUFFER(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
+    void **buffer = READ_BUF(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
     size_t capacity =
         READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
     atomic_store_explicit(&dq->bottom, b, memory_order_relaxed);
@@ -98,8 +98,7 @@ void *vn_cl_deque_steal_from(vn_cl_deque_t *dq)
     int64_t b = atomic_load_explicit(&dq->bottom, memory_order_acquire);
     void *elt = NULL;
     if (t < b) {
-        void **buffer =
-            READ_BUFFER(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
+        void **buffer = READ_BUF(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
         size_t capacity =
             READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
         if (!VN_MATCH(buffer, capacity))

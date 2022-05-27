@@ -9,13 +9,32 @@
 
 #include "../src/array_stack.h"
 #include "../src/cl_deque.h"
-// #include "../src/vn_cl_deque.h"
+#include "../src/vn_cl_deque.h"
 
 #define MIN(a, b) a < b ? a : b;
 #define MAX(a, b) a > b ? a : b;
 
 volatile _Atomic(bool) ready = false;
 volatile _Atomic(bool) all_done = false;
+
+// TODO(netto): get this option from CLI
+#define VN_CL_DEQUE
+
+#ifdef VN_CL_DEQUE
+#define create_deque create_vn_cl_deque
+#define destroy_deque destroy_vn_cl_deque
+#define deque_push vn_cl_deque_push
+#define deque_pop vn_cl_deque_pop
+#define deque_steal_from vn_cl_deque_steal_from
+typedef vn_cl_deque_t deque_t;
+#else
+#define create_deque create_cl_deque
+#define destroy_deque destroy_cl_deque
+#define deque_push cl_deque_push
+#define deque_pop cl_deque_pop
+#define deque_steal_from cl_deque_steal_from
+typedef cl_deque_t deque_t;
+#endif
 
 void insert_tree_node(tree_node_t *head, tree_node_t *child)
 {
@@ -46,7 +65,7 @@ tree_node_t *generate_random_tree(size_t nnodes)
     srand(time(NULL));
 
     for (size_t i = 0; i < nnodes; ++i) {
-        size_t key = rand() % KEY_RANGE;
+        size_t key = rand();
         tree_node_t *child = create_tree_node(key);
         insert_tree_node(head, child);
     }
@@ -121,7 +140,7 @@ void *dfs_work(void *arg)
         ;
 
     worker_t *me = (worker_t *)arg;
-    cl_deque_t *dq = (cl_deque_t *)me->dq;
+    deque_t *dq = (deque_t *)me->dq;
 
     size_t *sum = calloc(1, sizeof(size_t));
 
@@ -136,35 +155,34 @@ void *dfs_work(void *arg)
         if (t >= b) {
             if (all_workers_done(me)) {
                 atomic_store_explicit(&me->waiting, true, memory_order_release);
-                destroy_cl_deque(dq);
+                destroy_deque(dq);
                 return sum;
             }
 
             for (int i = 0; i < 2 * me->peers.nworkers; ++i) {
                 worker_t *peer = get_random_peer(me->peers, me->id);
-                tree_node_t *n = (tree_node_t *)cl_deque_steal_from((cl_deque_t *)peer->dq);
+                tree_node_t *n = (tree_node_t *)deque_steal_from((deque_t *)peer->dq);
                 if (n) { // successful steal
-                    cl_deque_push(dq, n);
-                    timeout_ns = MAX(timeout_ns - 1, MIN_TIMEOUT_NS);
+                    deque_push(dq, n);
                     goto work;
                 }
             }
 
             atomic_store_explicit(&me->waiting, true, memory_order_release);
             timeout_ns = MIN(timeout_ns * 2, MAX_TIMEOUT_NS);
-            sleep(10e-9 * timeout_ns);
+            sleep(10e-9 * (rand() % timeout_ns));
             atomic_store_explicit(&me->waiting, false, memory_order_release);
         }
 
         work : {
-            tree_node_t *n = (tree_node_t *)cl_deque_pop(dq);
+            tree_node_t *n = (tree_node_t *)deque_pop(dq);
             if (n) {
                 *sum += compute_hash(n->key);
                 if (n->left) {
-                    cl_deque_push(dq, n->left);
+                    deque_push(dq, n->left);
                 }
                 if (n->right) {
-                    cl_deque_push(dq, n->right);
+                    deque_push(dq, n->right);
                 }
             }
         }
@@ -181,7 +199,7 @@ worker_t *create_master_and_worker_pool(size_t nworkers)
         worker_t *worker = workers + i;
         worker->id = i;
         worker->waiting = false;
-        worker->dq = (void *)create_cl_deque();
+        worker->dq = (void *)create_deque();
         worker->peers = pool;
     }
 
@@ -237,12 +255,12 @@ benchmark_result_t run_parallel_dfs_benchmark(tree_node_t *head, size_t nruns,
         worker_t *master = create_master_and_worker_pool(nworkers);
         size_t *sum;
 
-        atomic_store_explicit(&ready, false, memory_order_release);
         atomic_store_explicit(&all_done, false, memory_order_release);
+        atomic_store_explicit(&ready, false, memory_order_release);
 
         clock_gettime(CLOCK_MONOTONIC, &start);
         {
-            cl_deque_push((cl_deque_t *)master->dq, head);
+            deque_push((deque_t *)master->dq, head);
             atomic_store_explicit(&ready, true, memory_order_release);
             sum = dfs_work(master);
             worker_pool_t pool = master->peers;
@@ -288,13 +306,13 @@ void verify_and_pretty_print(benchmark_result_t br_serial, benchmark_result_t br
 int main(int argc, char **argv)
 {
     if (argc > 1) {
-        fprintf(stderr, "Usage: `graph_bench [num-nodes]");
+        fprintf(stderr, "No support for CLI arguments\n");
         return 1;
     }
 
-    // TODO: get this from CLI
+    // TODO(netto): get these parameters from CLI
     size_t nnodes = MAX_NUM_NODES;
-    size_t nruns = 500;
+    size_t nruns = 100;
     size_t max_nworkers = 4;
 
     tree_node_t *head = generate_random_tree(nnodes);

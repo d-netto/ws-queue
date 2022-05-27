@@ -18,7 +18,7 @@ volatile _Atomic(bool) ready = false;
 volatile _Atomic(bool) all_done = false;
 
 // TODO(netto): get this option from CLI
-#define VN_CL_DEQUE
+ #define VN_CL_DEQUE
 
 #ifdef VN_CL_DEQUE
 #define create_deque create_vn_cl_deque

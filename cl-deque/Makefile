@@ -12,7 +12,7 @@ TEST_OBJS=$(TEST_SRCS:%.c=$(BINDIR)/%.o)
 all: graph_bench
 
 graph_bench: $(CL_DEQUE_OBJS) $(TEST_OBJS)
-	@$(CC) $^ $(CC_FLAGS) -o graph_bench
+	@$(CC) $^ $(CC_FLAGS) -pthread -o graph_bench
 
 $(BINDIR)/src/%.o: src/%.c src/%.h
 	@mkdir -p $(@D)

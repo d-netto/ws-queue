@@ -2,6 +2,7 @@
 #define CL_DEQUE_H
 
 #include <stdatomic.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "array.h"

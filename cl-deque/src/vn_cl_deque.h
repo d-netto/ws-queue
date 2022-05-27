@@ -2,6 +2,7 @@
 #define VN_CL_DEQUE_H
 
 #include <stdatomic.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #define BUFFER_INIT_SIZE (1 << 6)

@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define BUFFER_INIT_SIZE (1 << 3)
+#define BUFFER_INIT_SIZE (1 << 4)
 
 // =======
 // Chase and Lev's work-stealing queue, optimized for
@@ -29,7 +29,7 @@ typedef struct {
 
 #define ALIGNMENT 4
 
-// This has all lower `ALIGNMENT` equal to 1
+// This has all lower `ALIGNMENT` bits equal to 1
 #define ALIGNMENT_POW2 15
 
 #define READ_BUF_VN(buffer) ((uintptr_t)buffer & (uintptr_t)ALIGNMENT_POW2)

@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define BUFFER_INIT_SIZE (1 << 6)
+#define BUFFER_INIT_SIZE (1 << 3)
 
 // =======
 // Chase and Lev's work-stealing queue, optimized for
@@ -24,23 +24,25 @@ typedef struct {
     _Atomic(int64_t) bottom;
     _Atomic(void **) buffer;
     _Atomic(size_t) capacity;
+    uint8_t vn;
 } vn_cl_deque_t;
 
-#define NUM_TAG_BITS 2
+#define ALIGNMENT 4
 
-#define READ_BUF_VN(buffer) ((uintptr_t)buffer & ((uintptr_t)(1 << NUM_TAG_BITS)))
+// This has all lower `ALIGNMENT` equal to 1
+#define ALIGNMENT_POW2 15
 
-#define READ_BUFFER(buffer) (void **)((uintptr_t)buffer & (~(uintptr_t)(1 << NUM_TAG_BITS)))
+#define READ_BUF_VN(buffer) ((uintptr_t)buffer & (uintptr_t)ALIGNMENT_POW2)
 
-#define TAG_BUFFER(buffer) \
-    buffer = (void **)((uintptr_t)buffer | (uintptr_t)(1 << NUM_TAG_BITS))
+#define READ_BUFFER(buffer) (void **)((uintptr_t)buffer & (uintptr_t)(~ALIGNMENT_POW2))
 
-#define READ_CAPACITY_VN(capacity) (capacity & ((size_t)(1 << NUM_TAG_BITS)))
+#define TAG_BUFFER(buffer, vn) buffer = (void **)((uintptr_t)buffer | (uintptr_t)vn)
 
-#define READ_CAPACITY(capacity) (size_t)(capacity >> (NUM_TAG_BITS + 1))
+#define READ_CAPACITY_VN(capacity) (capacity & (size_t)ALIGNMENT_POW2)
 
-#define TAG_CAPACITY(capacity) \
-    capacity = (capacity << (NUM_TAG_BITS + 1) | ((size_t)(1 << (NUM_TAG_BITS))))
+#define READ_CAPACITY(capacity) (size_t)(capacity >> ALIGNMENT)
+
+#define TAG_CAPACITY(capacity, vn) capacity = ((capacity << ALIGNMENT) | (size_t)vn)
 
 #define VN_MATCH(buffer, capacity) (READ_BUF_VN(buffer) == READ_CAPACITY_VN(capacity))
 

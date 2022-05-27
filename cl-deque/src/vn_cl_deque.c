@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 
 #include "vn_cl_deque.h"
@@ -8,13 +9,17 @@ vn_cl_deque_t *create_vn_cl_deque()
 
     dq->top = 0;
     dq->bottom = 0;
+    dq->vn = 0;
 
+    // TODO(netto): replace this with `aligned_alloc` or `posix_memalign`?
     void **buffer = malloc(BUFFER_INIT_SIZE * sizeof(void *));
-    TAG_BUFFER(buffer);
+    // Check alignment...
+    assert(buffer && ~((uintptr_t)buffer & ALIGNMENT_POW2));
+    TAG_BUFFER(buffer, dq->vn);
     dq->buffer = buffer;
 
     size_t capacity = BUFFER_INIT_SIZE;
-    TAG_CAPACITY(capacity);
+    TAG_CAPACITY(capacity, dq->vn);
     dq->capacity = capacity;
 
     return dq;
@@ -34,6 +39,7 @@ void vn_cl_deque_push(vn_cl_deque_t *dq, void *elt)
         READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
     if (b - t > capacity - 1) {
         // Queue is full: resize it
+        vn_cl_resize(dq);
         buffer = READ_BUFFER(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
         capacity = READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
     }
@@ -45,23 +51,32 @@ void vn_cl_deque_push(vn_cl_deque_t *dq, void *elt)
 
 void vn_cl_resize(vn_cl_deque_t *dq)
 {
-    size_t old_top = atomic_load_explicit(&dq->top, memory_order_relaxed);
+    size_t top = atomic_load_explicit(&dq->top, memory_order_relaxed);
+    size_t bottom = atomic_load_explicit(&dq->bottom, memory_order_relaxed);
 
-    void **old_buffer = atomic_load_explicit(&dq->buffer, memory_order_relaxed);
-    size_t old_capacity = atomic_load_explicit(&dq->capacity, memory_order_relaxed);
+    void **old_buffer =
+        READ_BUFFER(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
+    size_t old_capacity =
+        READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
 
-    void **new_buffer = malloc(2 * dq->capacity);
+    void **new_buffer = malloc(2 * old_capacity * sizeof(void *));
+    // Check alignment...
+    assert(new_buffer && ~((uintptr_t)new_buffer & ALIGNMENT_POW2));
+
     size_t new_capacity = 2 * old_capacity;
 
     // Copy elements into new buffer
     // TODO(netto): do we need atomics here?
-    for (size_t i = 0; i < old_capacity; ++i) {
-        new_buffer[(old_top + i) % (new_capacity)] =
-            old_buffer[(old_top + i) % old_capacity];
+    for (size_t i = top; i < bottom; ++i) {
+        new_buffer[i % new_capacity] = old_buffer[i % old_capacity];
     }
 
-    atomic_store_explicit(&dq->buffer, TAG_BUFFER(new_buffer), memory_order_release);
-    atomic_store_explicit(&dq->capacity, TAG_CAPACITY(new_capacity), memory_order_release);
+    dq->vn++;
+
+    atomic_store_explicit(&dq->buffer, TAG_BUFFER(new_buffer, dq->vn),
+                          memory_order_release);
+    atomic_store_explicit(&dq->capacity, TAG_CAPACITY(new_capacity, dq->vn),
+                          memory_order_release);
 }
 
 void *vn_cl_deque_pop(vn_cl_deque_t *dq)
@@ -98,12 +113,16 @@ void *vn_cl_deque_steal_from(vn_cl_deque_t *dq)
     int64_t b = atomic_load_explicit(&dq->bottom, memory_order_acquire);
     void *elt = NULL;
     if (t < b) {
-        void **buffer =
-            READ_BUFFER(atomic_load_explicit(&dq->buffer, memory_order_relaxed));
-        size_t capacity =
-            READ_CAPACITY(atomic_load_explicit(&dq->capacity, memory_order_relaxed));
+        void **buffer = atomic_load_explicit(&dq->buffer, memory_order_relaxed);
+        size_t capacity = atomic_load_explicit(&dq->capacity, memory_order_relaxed);
+
         if (!VN_MATCH(buffer, capacity))
             return NULL;
+
+        buffer = READ_BUFFER(buffer);
+        capacity = READ_CAPACITY(capacity);
+
+
         elt = atomic_load_explicit((_Atomic(void *) *)&buffer[t % capacity],
                                    memory_order_relaxed);
         if (!atomic_compare_exchange_strong_explicit(

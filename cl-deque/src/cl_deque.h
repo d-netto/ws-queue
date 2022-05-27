@@ -7,7 +7,7 @@
 
 #include "array.h"
 
-#define BUFFER_INIT_SIZE (1 << 6)
+#define BUFFER_INIT_SIZE (1 << 3)
 
 // =======
 // Chase and Lev's work-stealing queue, optimized for

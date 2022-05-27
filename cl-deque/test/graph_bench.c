@@ -18,7 +18,7 @@ volatile _Atomic(bool) ready = false;
 volatile _Atomic(bool) all_done = false;
 
 // TODO(netto): get this option from CLI
-// #define VN_CL_DEQUE
+#define VN_CL_DEQUE
 
 #ifdef VN_CL_DEQUE
 #define create_deque create_vn_cl_deque
@@ -299,6 +299,7 @@ void verify_and_pretty_print(benchmark_result_t br_serial, benchmark_result_t br
         t_total_parallel += br_parallel.times[i];
     }
 
+    // TODO(netto): re-enable at some point?
     // printf("Serial dfs took %lf seconds on average\n", t_total_serial / nruns);
     printf("Parallel dfs took %lf seconds on average\n", t_total_parallel / nruns);
 }

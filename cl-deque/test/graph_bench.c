@@ -7,7 +7,7 @@
 #include "fib.h"
 #include "graph_bench.h"
 
-#include "../src/array_stack.h"
+#include "../src/array_queue.h"
 #include "../src/cl_deque.h"
 #include "../src/vn_cl_deque.h"
 
@@ -36,70 +36,76 @@ typedef vn_cl_deque_t deque_t;
 typedef cl_deque_t deque_t;
 #endif
 
-void insert_tree_node(tree_node_t *head, tree_node_t *child)
-{
-    assert(child);
+// void insert_tree_node(tree_node_t *head, tree_node_t *child)
+// {
+//     assert(child);
 
-    if (head->key >= child->key) {
-        if (head->left) {
-            insert_tree_node(head->left, child);
-        }
-        else {
-            head->left = child;
-        }
-    }
-    else {
-        if (head->right) {
-            insert_tree_node(head->right, child);
-        }
-        else {
-            head->right = child;
-        }
-    }
-}
+//     if (head->key >= child->key) {
+//         if (head->left) {
+//             insert_tree_node(head->left, child);
+//         }
+//         else {
+//             head->left = child;
+//         }
+//     }
+//     else {
+//         if (head->right) {
+//             insert_tree_node(head->right, child);
+//         }
+//         else {
+//             head->right = child;
+//         }
+//     }
+// }
 
-tree_node_t *generate_random_tree(size_t nnodes)
+tree_node_t *generate_tree(size_t nnodes)
 {
     tree_node_t *head = create_tree_node(0);
 
-    srand(time(NULL));
+    array_queue_t q = create_queue(MAX_NNODES);
+    push(&q, head);
 
-    for (size_t i = 0; i < nnodes; ++i) {
-        size_t key = rand() % KEY_RANGE;
-        tree_node_t *child = create_tree_node(key);
-        insert_tree_node(head, child);
+    for (size_t i = 0; i < (1 << 16); ++i) {
+        tree_node_t *n = (tree_node_t *)pop_top(&q);
+        tree_node_t *cl = create_tree_node(0);
+        tree_node_t *cr = create_tree_node(0);
+        n->left = cl;
+        n->right = cr;
+        push(&q, cl);
+        push(&q, cr);
     }
+
+    // destroy_deque(&q);
 
     return head;
 }
 
 size_t serial_dfs(tree_node_t *head)
 {
-    array_stack_t stack = create_stack(MAX_NUM_NODES);
-
-    push(&stack, head);
+    array_queue_t q = create_queue(MAX_NNODES);
+    push(&q, head);
 
     size_t sum = 0;
 
     for (;;) {
         // Empty dfs queue
-        if (stack.top == stack.bottom) {
+        if (q.top == q.bottom) {
             break;
         }
 
-        tree_node_t *n = (tree_node_t *)pop(&stack);
+        tree_node_t *n = (tree_node_t *)pop_bottom(&q);
         if (n) {
-            sum += compute_fib(n->key);
+            // sum += compute_fib(n->key);
             if (n->left) {
-                push(&stack, n->left);
+                push(&q, n->left);
             }
             if (n->right) {
-                push(&stack, n->right);
+                push(&q, n->right);
             }
         }
     }
 
-    destroy_stack(&stack);
+    destroy_queue(&q);
 
     return sum;
 }
@@ -177,7 +183,7 @@ void *dfs_work(void *arg)
         work : {
             tree_node_t *n = (tree_node_t *)deque_pop(dq);
             if (n) {
-                *sum += compute_fib(n->key);
+                // *sum += compute_fib(n->key);
                 if (n->left) {
                     deque_push(dq, n->left);
                 }
@@ -312,11 +318,11 @@ int main(int argc, char **argv)
     }
 
     // TODO(netto): get these parameters from CLI
-    size_t nnodes = MAX_NUM_NODES;
+    size_t nnodes = MAX_NNODES;
     size_t nruns = 100;
     size_t max_nworkers = 4;
 
-    tree_node_t *head = generate_random_tree(nnodes);
+    tree_node_t *head = generate_tree(nnodes);
 
     for (size_t nworkers = 1; nworkers <= max_nworkers; ++nworkers) {
         benchmark_result_t br_serial = run_serial_dfs_benchmark(head, nruns);
